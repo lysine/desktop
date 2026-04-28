@@ -45,13 +45,13 @@ describe('parseLfsLocksJson', () => {
 })
 
 describe('getLockableFiles', () => {
-  it('returns empty set when no files are lockable', async t => {
+  it('returns empty set for unlockable repo', async t => {
     const repository = await setupEmptyRepository(t)
     const lockable = await getLockableFiles(repository, ['Assets/file.uasset'])
     assert.equal(lockable.size, 0)
   })
 
-  it('identifies lockable files from .gitattributes', async t => {
+  it('returns set for lockable files', async t => {
     const repository = await setupEmptyRepository(t)
     await writeFile(
       Path.join(repository.path, '.gitattributes'),
@@ -67,7 +67,7 @@ describe('getLockableFiles', () => {
     assert(!lockable.has('src/main.ts'))
   })
 
-  it('returns empty set for empty file list', async t => {
+  it('returns empty set for empty input', async t => {
     const repository = await setupEmptyRepository(t)
     const lockable = await getLockableFiles(repository, [])
     assert.equal(lockable.size, 0)
