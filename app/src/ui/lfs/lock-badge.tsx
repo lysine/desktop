@@ -33,6 +33,20 @@ export class LockBadge extends React.Component<ILockBadgeProps, {}> {
       )
     }
 
+    if (lockState.kind === 'lock-state-unknown') {
+      return (
+        <TooltippedContent
+          tooltip="Lock status unknown — check repository access"
+          direction={TooltipDirection.EAST}
+        >
+          <Octicon
+            symbol={octicons.question}
+            className="lock-badge lock-badge--unknown"
+          />
+        </TooltippedContent>
+      )
+    }
+
     const { info } = lockState
     const when = info.lockedAt.toLocaleDateString()
 

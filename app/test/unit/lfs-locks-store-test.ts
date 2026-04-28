@@ -73,4 +73,24 @@ describe('deriveLockState', () => {
     )
     assert.equal(state.kind, 'unlocked-lockable')
   })
+
+  it('returns lock-state-unknown when locks is null (fetch failed)', () => {
+    const state = deriveLockState(
+      'Assets/Character.uasset',
+      new Set(['Assets/Character.uasset']),
+      null,
+      'james'
+    )
+    assert.equal(state.kind, 'lock-state-unknown')
+  })
+
+  it('returns unlocked-not-lockable even when locks is null if path is not lockable', () => {
+    const state = deriveLockState(
+      'src/main.ts',
+      new Set(['Assets/Character.uasset']),
+      null,
+      'james'
+    )
+    assert.equal(state.kind, 'unlocked-not-lockable')
+  })
 })
