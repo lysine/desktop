@@ -33,10 +33,27 @@ export function deriveLockState(
 }
 
 export class LfsLocksStore {
-  private stateByRepo = new Map<string, IRepoLockState>()
+  private readonly stateByRepo = new Map<string, IRepoLockState>()
+  private readonly refreshByRepo = new Map<string, Promise<void>>()
 
-  /** Refresh lock state. Safe to call on any repo — clears state if repo is not using LFS. */
-  public async refresh(
+  /** Refresh lock state. Safe to call on any repo — clears state if repo is not using LFS.
+   *  Coalesces concurrent calls for the same repo into one in-flight request. */
+  public refresh(
+    repository: Repository,
+    filePaths: ReadonlyArray<string>
+  ): Promise<void> {
+    const existing = this.refreshByRepo.get(repository.path)
+    if (existing) {
+      return existing
+    }
+    const p = this.doRefresh(repository, filePaths).finally(() => {
+      this.refreshByRepo.delete(repository.path)
+    })
+    this.refreshByRepo.set(repository.path, p)
+    return p
+  }
+
+  private async doRefresh(
     repository: Repository,
     filePaths: ReadonlyArray<string>
   ): Promise<void> {
@@ -73,7 +90,7 @@ export class LfsLocksStore {
     return deriveLockState(path, state.lockableFiles, state.locks, state.currentUser)
   }
 
-  /** Returns a map of path → LockState for all given paths. Omits unlocked-not-lockable entries. */
+  /** Returns a map of path → LockState for all lockable paths. Non-lockable paths are omitted. */
   public getLockStatesForPaths(
     repository: Repository,
     paths: ReadonlyArray<string>

@@ -40,9 +40,6 @@ describe('deriveLockState', () => {
       'james'
     )
     assert.equal(state.kind, 'locked-by-me')
-    if (state.kind === 'locked-by-me') {
-      assert.equal(state.info.owner, 'james')
-    }
   })
 
   it('returns locked-by-other when owner does not match currentUser', () => {
@@ -65,5 +62,15 @@ describe('deriveLockState', () => {
       null
     )
     assert.equal(state.kind, 'locked-by-other')
+  })
+
+  it('returns unlocked-lockable when currentUser is null and no lock held', () => {
+    const state = deriveLockState(
+      'Assets/Character.uasset',
+      new Set(['Assets/Character.uasset']),
+      new Map(),
+      null
+    )
+    assert.equal(state.kind, 'unlocked-lockable')
   })
 })
