@@ -15,4 +15,8 @@
   &.lock-badge--free {
     color: var(--color-fg-muted, #6e7781);
   }
+
+  &.lock-badge--unknown {
+    color: var(--color-attention-fg, #9a6700);
+  }
 }

@@ -10,3 +10,4 @@ export type LockState =
   | { readonly kind: 'unlocked-lockable' }
   | { readonly kind: 'locked-by-me'; readonly info: ILfsLockInfo }
   | { readonly kind: 'locked-by-other'; readonly info: ILfsLockInfo }
+  | { readonly kind: 'lock-state-unknown' }
