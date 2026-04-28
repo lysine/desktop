@@ -150,6 +150,7 @@ import {
   IConstrainedValue,
   ICompareState,
   CommitOptions,
+  ILfsLockReleaseState,
 } from '../app-state'
 import type { ModelInfo } from '@github/copilot-sdk'
 import {
@@ -253,6 +254,10 @@ import { readEmoji } from '../read-emoji'
 import { Emoji } from '../emoji'
 import { GitStoreCache } from './git-store-cache'
 import { LfsLocksStore } from './lfs-locks-store'
+import {
+  getRemoteTipBeforePush,
+  getReleasableLocks,
+} from '../git/lfs-post-push'
 import { GitErrorContext } from '../git-error-context'
 import {
   setNumber,
@@ -500,6 +505,7 @@ export const showChangesFilterDefault = true
 export class AppStore extends TypedBaseStore<IAppState> {
   private readonly gitStoreCache: GitStoreCache
   private readonly lfsLocksStore = new LfsLocksStore()
+  private lfsLockReleaseState: ILfsLockReleaseState | null = null
 
   private accounts: ReadonlyArray<Account> = new Array<Account>()
   private repositories: ReadonlyArray<Repository> = new Array<Repository>()
@@ -1175,6 +1181,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       copilotModels: this.copilotModels,
       copilotAvailable: this.copilotStore.isAvailable,
       byokProviders: this.byokProviders,
+      lfsLockReleaseState: this.lfsLockReleaseState,
     }
   }
 
@@ -3674,6 +3681,18 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
   }
 
+  public _dismissLfsLockReleaseDialog() {
+    this.lfsLockReleaseState = null
+    this.emitUpdate()
+    // Refresh badges now that locks may have changed
+    const state = this.getSelectedState()
+    if (state?.type === SelectionType.Repository) {
+      this.refreshLfsLockState(state.repository).catch(err =>
+        log.warn('Failed to refresh LFS lock state after release dialog', err)
+      )
+    }
+  }
+
   public async _refreshRepository(repository: Repository): Promise<void> {
     if (repository.missing) {
       return
@@ -4848,6 +4867,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
         )
       }
 
+      // Capture the remote tip before pushing so we can diff against it later
+      // to find which files were included in the push.
+      const remoteTipBefore = await getRemoteTipBeforePush(
+        repository,
+        remoteName,
+        branch.name
+      )
+
       const gitStore = this.gitStoreCache.get(repository)
       await gitStore.performFailableOperation(
         async () => {
@@ -4909,6 +4936,19 @@ export class AppStore extends TypedBaseStore<IAppState> {
           await this.refreshBranchProtectionState(repository)
 
           await this._refreshRepository(repository)
+
+          if (remoteTipBefore !== null) {
+            getReleasableLocks(repository, remoteTipBefore)
+              .then(locks => {
+                if (locks.length > 0) {
+                  this.lfsLockReleaseState = { repository, locks }
+                  this.emitUpdate()
+                }
+              })
+              .catch(err =>
+                log.warn('Failed to compute releasable LFS locks', err)
+              )
+          }
         },
         { retryAction }
       )

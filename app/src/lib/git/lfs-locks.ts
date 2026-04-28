@@ -141,6 +141,44 @@ export async function getLockableFiles(
 }
 
 /**
+ * Unlock LFS locks by path. Runs all unlocks in parallel, retries each
+ * failure once. Returns which paths succeeded and which failed.
+ */
+export async function unlockLfsFiles(
+  repository: Repository,
+  locks: ReadonlyArray<ILfsLockInfo>
+): Promise<{ succeeded: ReadonlyArray<string>; failed: ReadonlyArray<string> }> {
+  const tryUnlock = async (lock: ILfsLockInfo): Promise<boolean> => {
+    try {
+      await git(
+        ['lfs', 'unlock', lock.path],
+        repository.path,
+        'unlockLfsFile'
+      )
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const results = await Promise.all(
+    locks.map(async lock => {
+      const ok = await tryUnlock(lock)
+      if (ok) {
+        return { path: lock.path, ok: true }
+      }
+      const retry = await tryUnlock(lock)
+      return { path: lock.path, ok: retry }
+    })
+  )
+
+  return {
+    succeeded: results.filter(r => r.ok).map(r => r.path),
+    failed: results.filter(r => !r.ok).map(r => r.path),
+  }
+}
+
+/**
  * Returns the local git user name for ownership comparison.
  * Falls back to null if git config has no user.name set.
  */

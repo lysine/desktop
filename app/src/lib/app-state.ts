@@ -9,7 +9,7 @@ import { Branch, IAheadBehind } from '../models/branch'
 import { Tip } from '../models/tip'
 import { Commit } from '../models/commit'
 import { CommittedFileChange, WorkingDirectoryStatus } from '../models/status'
-import { LockState } from '../models/lfs-lock'
+import { LockState, ILfsLockInfo } from '../models/lfs-lock'
 import { CloningRepository } from '../models/cloning-repository'
 import { IMenu } from '../models/app-menu'
 import { IRemote } from '../models/remote'
@@ -141,6 +141,9 @@ export interface IAppState {
   readonly allPopups: ReadonlyArray<Popup>
   readonly currentFoldout: Foldout | null
   readonly currentBanner: Banner | null
+
+  /** Non-null when the post-push LFS lock release dialog should be shown. */
+  readonly lfsLockReleaseState: ILfsLockReleaseState | null
 
   /**
    * The shape of the drag element rendered in the `app.renderDragElement`. It
@@ -1146,3 +1149,9 @@ export interface IPullRequestState {
   /** The result of merging the pull request branch into the base branch */
   readonly mergeStatus: MergeTreeResult | null
 }
+
+export interface ILfsLockReleaseState {
+  readonly repository: import('../models/repository').Repository
+  readonly locks: ReadonlyArray<ILfsLockInfo>
+}
+

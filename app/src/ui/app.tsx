@@ -97,6 +97,7 @@ import { CLIInstalled } from './cli-installed'
 import { GenericGitAuthentication } from './generic-git-auth'
 import { ShellError } from './shell'
 import { InitializeLFS, AttributeMismatch } from './lfs'
+import { LfsLockReleaseDialog } from './lfs/lfs-lock-release-dialog'
 import { UpstreamAlreadyExists } from './upstream-already-exists'
 import { ReleaseNotes } from './release-notes'
 import { DeletePullRequest } from './delete-branch/delete-pull-request-dialog'
@@ -2963,6 +2964,7 @@ export class App extends React.Component<IAppProps, IAppState> {
         {this.renderBanner()}
         {this.renderRepository()}
         {this.renderPopups()}
+        {this.renderLfsLockReleaseDialog()}
         {this.renderDragElement()}
       </div>
     )
@@ -3382,6 +3384,24 @@ export class App extends React.Component<IAppProps, IAppState> {
         enableFocusTrap={enableFocusTrap}
         underlineLinks={this.state.underlineLinks}
       />
+    )
+  }
+
+  private renderLfsLockReleaseDialog(): JSX.Element | null {
+    const { lfsLockReleaseState } = this.state
+    if (lfsLockReleaseState === null) {
+      return null
+    }
+    return (
+      <DialogStackContext.Provider value={{ isTopMost: true }}>
+        <LfsLockReleaseDialog
+          repository={lfsLockReleaseState.repository}
+          locks={lfsLockReleaseState.locks}
+          onDismissed={() =>
+            this.props.dispatcher.dismissLfsLockReleaseDialog()
+          }
+        />
+      </DialogStackContext.Provider>
     )
   }
 

@@ -4148,4 +4148,9 @@ export class Dispatcher {
       this.postError(e)
     }
   }
+
+  /** Dismiss the post-push LFS lock release dialog and refresh lock badges. */
+  public dismissLfsLockReleaseDialog(): void {
+    this.appStore._dismissLfsLockReleaseDialog()
+  }
 }
