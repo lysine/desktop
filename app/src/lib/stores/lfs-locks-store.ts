@@ -69,6 +69,12 @@ export class LfsLocksStore {
       getCurrentUser(repository),
     ])
 
+    if (locks === null) {
+      // Lock state unavailable — clear rather than show misleading "unlocked" badges.
+      this.stateByRepo.delete(repository.path)
+      return
+    }
+
     const lockMap = new Map<string, ILfsLockInfo>()
     for (const lock of locks) {
       lockMap.set(lock.path, lock)
