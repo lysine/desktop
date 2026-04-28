@@ -3657,7 +3657,6 @@ export class AppStore extends TypedBaseStore<IAppState> {
     return repository
   }
 
-  /** This shouldn't be called directly. See `Dispatcher`. */
   private async refreshLfsLockState(repository: Repository): Promise<void> {
     const state = this.repositoryStateCache.get(repository)
     const filePaths = state.changesState.workingDirectory.files.map(f => f.path)
