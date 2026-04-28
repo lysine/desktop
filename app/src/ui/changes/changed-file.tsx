@@ -9,6 +9,8 @@ import { TooltipDirection } from '../lib/tooltip'
 import { TooltippedContent } from '../lib/tooltipped-content'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
 import { IMatches } from '../../lib/fuzzy-find'
+import { LockBadge } from '../lfs/lock-badge'
+import { LockState } from '../../models/lfs-lock'
 
 interface IChangedFileProps {
   readonly file: WorkingDirectoryFileChange
@@ -19,6 +21,7 @@ interface IChangedFileProps {
   readonly focused: boolean
   /** The characters in the file path to highlight */
   readonly matches?: IMatches
+  readonly lockState?: LockState
   readonly onIncludeChanged: (
     file: WorkingDirectoryFileChange,
     include: boolean
@@ -50,6 +53,7 @@ export class ChangedFile extends React.Component<IChangedFileProps, {}> {
       checkboxTooltip,
       focused,
       matches,
+      lockState,
     } = this.props
     const { status, path } = file
     const fileStatus = mapStatus(status)
@@ -115,6 +119,7 @@ export class ChangedFile extends React.Component<IChangedFileProps, {}> {
             className={'status status-' + fileStatus.toLowerCase()}
           />
         </TooltippedContent>
+        {lockState !== undefined && <LockBadge lockState={lockState} />}
       </div>
     )
   }
