@@ -48,11 +48,29 @@ export function parseLfsLocksJson(json: string): ReadonlyArray<ILfsLockInfo> {
 }
 
 /**
+ * Returns true if `origin` is reachable with current credentials.
+ * Used once per session to distinguish "server says no locks" from
+ * "server returned [] silently due to insufficient access".
+ */
+export async function isOriginReachable(repository: Repository): Promise<boolean> {
+  try {
+    await git(
+      ['ls-remote', '--exit-code', '--refs', 'origin', 'HEAD'],
+      repository.path,
+      'checkLfsRemoteAccess'
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * List all LFS locks for the repository.
  * Tries the server first; falls back to the local cache if the server call
  * fails (e.g. credential prompt suppressed, no network, or auth error).
  * Returns null when lock state cannot be determined at all — callers should
- * show no badge rather than a misleading "unlocked" state.
+ * show a "?" badge rather than a misleading "unlocked" state.
  */
 export async function listLocks(
   repository: Repository
@@ -74,7 +92,14 @@ export async function listLocks(
       repository.path,
       'listLfsLocksLocal'
     )
-    return parseLfsLocksJson(stdout)
+    const local = parseLfsLocksJson(stdout)
+    // An empty local cache after a server failure is ambiguous — it could mean
+    // "no locks exist" or "we never managed to cache any". Surface as unknown
+    // so the UI shows a "?" badge instead of a misleading "unlocked" padlock.
+    if (local.length === 0) {
+      return null
+    }
+    return local
   } catch (e) {
     log.warn('listLfsLocks: local cache also failed', e instanceof Error ? e : new Error(String(e)))
     return null

@@ -1,7 +1,7 @@
 import { Repository } from '../../models/repository'
 import { ILfsLockInfo, LockState } from '../../models/lfs-lock'
 import { isUsingLFS } from '../git/lfs'
-import { listLocks, getLockableFiles, getCurrentUser } from '../git/lfs-locks'
+import { listLocks, getLockableFiles, getCurrentUser, isOriginReachable } from '../git/lfs-locks'
 
 interface IRepoLockState {
   /** null means the lock list could not be fetched (auth error, no network, etc.) */
@@ -40,6 +40,10 @@ export function deriveLockState(
 export class LfsLocksStore {
   private readonly stateByRepo = new Map<string, IRepoLockState>()
   private readonly refreshByRepo = new Map<string, Promise<void>>()
+  // Checked once per session per repo — GitHub's LFS API silently returns []
+  // when the token lacks org-level access, so we verify reachability up front
+  // rather than on every empty-lock response.
+  private readonly remoteReachableByRepo = new Map<string, boolean>()
 
   /** Refresh lock state. Safe to call on any repo — clears state if repo is not using LFS.
    *  Coalesces concurrent calls for the same repo into one in-flight request. */
@@ -65,8 +69,19 @@ export class LfsLocksStore {
     const usingLFS = await isUsingLFS(repository)
     if (!usingLFS) {
       this.stateByRepo.delete(repository.path)
+      this.remoteReachableByRepo.delete(repository.path)
       return
     }
+
+    // Check reachability once per session; use cached result on subsequent refreshes.
+    if (!this.remoteReachableByRepo.has(repository.path)) {
+      const reachable = await isOriginReachable(repository)
+      this.remoteReachableByRepo.set(repository.path, reachable)
+      if (!reachable) {
+        log.warn('lfs-locks-store: origin is not reachable — lock state will be shown as unknown')
+      }
+    }
+    const remoteReachable = this.remoteReachableByRepo.get(repository.path)!
 
     const [locks, lockableFiles, currentUser] = await Promise.all([
       listLocks(repository),
@@ -74,9 +89,15 @@ export class LfsLocksStore {
       getCurrentUser(repository),
     ])
 
-    const lockMap = locks === null ? null : new Map<string, ILfsLockInfo>()
-    if (locks !== null) {
-      for (const lock of locks) {
+    // GitHub silently returns [] when the token lacks org-level LFS access.
+    // If we confirmed at session start that the remote is not reachable, an
+    // empty lock list is not authoritative — treat it as unknown.
+    const effectiveLocks =
+      locks !== null && locks.length === 0 && !remoteReachable ? null : locks
+
+    const lockMap = effectiveLocks === null ? null : new Map<string, ILfsLockInfo>()
+    if (effectiveLocks !== null) {
+      for (const lock of effectiveLocks) {
         lockMap!.set(lock.path, lock)
       }
     }
