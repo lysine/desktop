@@ -252,6 +252,7 @@ import { RepositoryStateCache } from './repository-state-cache'
 import { readEmoji } from '../read-emoji'
 import { Emoji } from '../emoji'
 import { GitStoreCache } from './git-store-cache'
+import { LfsLocksStore } from './lfs-locks-store'
 import { GitErrorContext } from '../git-error-context'
 import {
   setNumber,
@@ -498,6 +499,7 @@ export const showChangesFilterDefault = true
 
 export class AppStore extends TypedBaseStore<IAppState> {
   private readonly gitStoreCache: GitStoreCache
+  private readonly lfsLocksStore = new LfsLocksStore()
 
   private accounts: ReadonlyArray<Account> = new Array<Account>()
   private repositories: ReadonlyArray<Repository> = new Array<Repository>()
@@ -3655,7 +3657,23 @@ export class AppStore extends TypedBaseStore<IAppState> {
     return repository
   }
 
-  /** This shouldn't be called directly. See `Dispatcher`. */
+  private async refreshLfsLockState(repository: Repository): Promise<void> {
+    const state = this.repositoryStateCache.get(repository)
+    const filePaths = state.changesState.workingDirectory.files.map(f => f.path)
+
+    await this.lfsLocksStore.refresh(repository, filePaths)
+
+    const lfsLockStates = this.lfsLocksStore.getLockStatesForPaths(
+      repository,
+      filePaths
+    )
+
+    this.repositoryStateCache.updateChangesState(repository, () => ({
+      lfsLockStates,
+    }))
+    this.emitUpdate()
+  }
+
   public async _refreshRepository(repository: Repository): Promise<void> {
     if (repository.missing) {
       return
@@ -3725,6 +3743,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this._initializeCompare(repository)
 
     this.updateCurrentTutorialStep(repository)
+
+    this.refreshLfsLockState(repository).catch(err =>
+      log.warn('Failed to refresh LFS lock state', err)
+    )
   }
 
   private async updateStashEntryCountMetric(

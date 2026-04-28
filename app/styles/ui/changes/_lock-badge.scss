@@ -1,0 +1,18 @@
+.lock-badge {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+
+  &.lock-badge--mine {
+    color: var(--color-success-fg, #2da44e);
+  }
+
+  &.lock-badge--other {
+    color: var(--color-danger-fg, #cf222e);
+  }
+
+  &.lock-badge--free {
+    color: var(--color-fg-muted, #6e7781);
+  }
+}

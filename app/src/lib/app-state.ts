@@ -9,6 +9,7 @@ import { Branch, IAheadBehind } from '../models/branch'
 import { Tip } from '../models/tip'
 import { Commit } from '../models/commit'
 import { CommittedFileChange, WorkingDirectoryStatus } from '../models/status'
+import { LockState } from '../models/lfs-lock'
 import { CloningRepository } from '../models/cloning-repository'
 import { IMenu } from '../models/app-menu'
 import { IRemote } from '../models/remote'
@@ -790,6 +791,9 @@ export type ChangesSelection =
 
 export interface IChangesState {
   readonly workingDirectory: WorkingDirectoryStatus
+
+  /** LFS lock states keyed by file path. Undefined for non-LFS repos. */
+  readonly lfsLockStates?: ReadonlyMap<string, LockState>
 
   /** The commit message for a work-in-progress commit in the changes view. */
   readonly commitMessage: ICommitMessage
