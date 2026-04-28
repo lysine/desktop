@@ -3,9 +3,9 @@ import { Repository } from '../../models/repository'
 import { ILfsLockInfo } from '../../models/lfs-lock'
 
 interface RawLfsLock {
-  id: number | string
-  path: string
-  locked_at: string
+  id?: number | string
+  path?: string
+  locked_at?: string
   owner?: { name?: string }
 }
 
@@ -29,6 +29,9 @@ export function parseLfsLocksJson(json: string): ReadonlyArray<ILfsLockInfo> {
   for (const entry of raw as RawLfsLock[]) {
     const owner = entry.owner?.name
     if (!owner) {
+      continue
+    }
+    if (typeof entry.path !== 'string' || !entry.path || typeof entry.locked_at !== 'string') {
       continue
     }
     results.push({
@@ -55,7 +58,8 @@ export async function listLocks(
       'listLfsLocks'
     )
     return parseLfsLocksJson(stdout)
-  } catch {
+  } catch (e) {
+    log.warn('listLfsLocks: failed to list LFS locks', e instanceof Error ? e : new Error(String(e)))
     return []
   }
 }
