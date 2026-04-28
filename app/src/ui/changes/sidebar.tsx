@@ -489,6 +489,7 @@ export class ChangesSidebar extends React.Component<IChangesSidebarProps, {}> {
           signOffCommits={this.props.signOffCommits}
           allowEmptyCommit={this.props.allowEmptyCommit}
           onUpdateCommitOptions={this.props.onUpdateCommitOptions}
+          lockStates={this.props.changes.lfsLockStates}
         />
         {this.renderUndoCommit(rebaseConflictState)}
       </div>
