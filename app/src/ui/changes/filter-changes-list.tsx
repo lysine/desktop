@@ -55,6 +55,7 @@ import { createObservableRef } from '../lib/observable-ref'
 import { Popup, PopupType } from '../../models/popup'
 import { EOL } from 'os'
 import { RepoRulesInfo } from '../../models/repo-rules'
+import { LockState } from '../../models/lfs-lock'
 import { IAheadBehind } from '../../models/branch'
 import { StashDiffViewerId } from '../stashing'
 import { AugmentedSectionFilterList } from '../lib/augmented-filter-list'
@@ -217,6 +218,9 @@ interface IFilterChangesListProps {
   readonly showCommitLengthWarning: boolean
 
   readonly accounts: ReadonlyArray<Account>
+
+  /** LFS lock states keyed by file path. Absent for non-LFS repos. */
+  readonly lockStates?: ReadonlyMap<string, LockState>
 
   /** The file list filter state containing all filter options */
   readonly fileListFilter: IFileListFilterState
@@ -465,6 +469,8 @@ export class FilterChangesList extends React.Component<
       ? 'Only changes that have been committed within the submodule will be added to this repository. You need to commit any other modified or untracked changes in the submodule before including them in this repository.'
       : undefined
 
+    const lockState = this.props.lockStates?.get(file.path)
+
     return (
       <ChangedFile
         file={file}
@@ -476,6 +482,7 @@ export class FilterChangesList extends React.Component<
         checkboxTooltip={checkboxTooltip}
         focused={this.state.focusedRow === changeListItem.id}
         matches={matches}
+        lockState={lockState}
       />
     )
   }
