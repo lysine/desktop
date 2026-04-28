@@ -4,7 +4,8 @@ import { isUsingLFS } from '../git/lfs'
 import { listLocks, getLockableFiles, getCurrentUser } from '../git/lfs-locks'
 
 interface IRepoLockState {
-  readonly locks: ReadonlyMap<string, ILfsLockInfo>
+  /** null means the lock list could not be fetched (auth error, no network, etc.) */
+  readonly locks: ReadonlyMap<string, ILfsLockInfo> | null
   readonly lockableFiles: ReadonlySet<string>
   readonly currentUser: string | null
 }
@@ -13,11 +14,15 @@ interface IRepoLockState {
 export function deriveLockState(
   path: string,
   lockableFiles: ReadonlySet<string>,
-  locks: ReadonlyMap<string, ILfsLockInfo>,
+  locks: ReadonlyMap<string, ILfsLockInfo> | null,
   currentUser: string | null
 ): LockState {
   if (!lockableFiles.has(path)) {
     return { kind: 'unlocked-not-lockable' }
+  }
+
+  if (locks === null) {
+    return { kind: 'lock-state-unknown' }
   }
 
   const lock = locks.get(path)
@@ -69,15 +74,11 @@ export class LfsLocksStore {
       getCurrentUser(repository),
     ])
 
-    if (locks === null) {
-      // Lock state unavailable — clear rather than show misleading "unlocked" badges.
-      this.stateByRepo.delete(repository.path)
-      return
-    }
-
-    const lockMap = new Map<string, ILfsLockInfo>()
-    for (const lock of locks) {
-      lockMap.set(lock.path, lock)
+    const lockMap = locks === null ? null : new Map<string, ILfsLockInfo>()
+    if (locks !== null) {
+      for (const lock of locks) {
+        lockMap!.set(lock.path, lock)
+      }
     }
 
     this.stateByRepo.set(repository.path, {
