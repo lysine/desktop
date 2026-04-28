@@ -4,6 +4,7 @@ import * as octicons from '../octicons/octicons.generated'
 import { TooltippedContent } from '../lib/tooltipped-content'
 import { TooltipDirection } from '../lib/tooltip'
 import { LockState } from '../../models/lfs-lock'
+import { assertNever } from '../../lib/fatal-error'
 
 interface ILockBadgeProps {
   readonly lockState: LockState
@@ -49,17 +50,20 @@ export class LockBadge extends React.Component<ILockBadgeProps, {}> {
       )
     }
 
-    // locked-by-other
-    return (
-      <TooltippedContent
-        tooltip={`Locked by ${info.owner} on ${when}`}
-        direction={TooltipDirection.EAST}
-      >
-        <Octicon
-          symbol={octicons.lock}
-          className="lock-badge lock-badge--other"
-        />
-      </TooltippedContent>
-    )
+    if (lockState.kind === 'locked-by-other') {
+      return (
+        <TooltippedContent
+          tooltip={`Locked by ${info.owner} on ${when}`}
+          direction={TooltipDirection.EAST}
+        >
+          <Octicon
+            symbol={octicons.lock}
+            className="lock-badge lock-badge--other"
+          />
+        </TooltippedContent>
+      )
+    }
+
+    return assertNever(lockState, `Unknown lock state kind`)
   }
 }
