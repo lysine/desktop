@@ -31,6 +31,9 @@ export function parseLfsLocksJson(json: string): ReadonlyArray<ILfsLockInfo> {
     if (!owner) {
       continue
     }
+    if (entry.id == null) {
+      continue
+    }
     if (typeof entry.path !== 'string' || !entry.path || typeof entry.locked_at !== 'string') {
       continue
     }
@@ -92,7 +95,8 @@ export async function getLockableFiles(
       }
     }
     return lockable
-  } catch {
+  } catch (e) {
+    log.warn('getLockableFiles: failed to check lockable attributes', e instanceof Error ? e : new Error(String(e)))
     return new Set()
   }
 }
@@ -111,7 +115,8 @@ export async function getCurrentUser(
       'getLfsCurrentUser'
     )
     return stdout.trim() || null
-  } catch {
+  } catch (e) {
+    log.warn('getCurrentUser: failed to read git user.name', e instanceof Error ? e : new Error(String(e)))
     return null
   }
 }
