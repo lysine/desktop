@@ -49,7 +49,9 @@ export function parseLfsLocksJson(json: string): ReadonlyArray<ILfsLockInfo> {
 
 /**
  * List all LFS locks for the repository.
- * Returns an empty array if the command fails (e.g., no LFS server configured).
+ * Tries the server first; falls back to the local cache only if the server
+ * call throws (e.g. credential prompt suppressed, no network, or auth error).
+ * If the server returns successfully (even an empty list) that result is used.
  */
 export async function listLocks(
   repository: Repository
@@ -62,7 +64,18 @@ export async function listLocks(
     )
     return parseLfsLocksJson(stdout)
   } catch (e) {
-    log.warn('listLfsLocks: failed to list LFS locks', e instanceof Error ? e : new Error(String(e)))
+    log.warn('listLfsLocks: server fetch failed, trying local cache', e instanceof Error ? e : new Error(String(e)))
+  }
+
+  try {
+    const { stdout } = await git(
+      ['lfs', 'locks', '--json', '--local'],
+      repository.path,
+      'listLfsLocksLocal'
+    )
+    return parseLfsLocksJson(stdout)
+  } catch (e) {
+    log.warn('listLfsLocks: local cache also failed', e instanceof Error ? e : new Error(String(e)))
     return []
   }
 }
