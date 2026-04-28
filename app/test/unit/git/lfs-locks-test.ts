@@ -1,6 +1,9 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
-import { parseLfsLocksJson } from '../../../src/lib/git/lfs-locks'
+import * as Path from 'path'
+import { writeFile } from 'fs/promises'
+import { parseLfsLocksJson, getLockableFiles } from '../../../src/lib/git/lfs-locks'
+import { setupEmptyRepository } from '../../helpers/repositories'
 
 describe('parseLfsLocksJson', () => {
   it('parses a single lock entry', () => {
@@ -38,5 +41,35 @@ describe('parseLfsLocksJson', () => {
     ])
     const locks = parseLfsLocksJson(json)
     assert.equal(locks.length, 0)
+  })
+})
+
+describe('getLockableFiles', () => {
+  it('returns empty set when no files are lockable', async t => {
+    const repository = await setupEmptyRepository(t)
+    const lockable = await getLockableFiles(repository, ['Assets/file.uasset'])
+    assert.equal(lockable.size, 0)
+  })
+
+  it('identifies lockable files from .gitattributes', async t => {
+    const repository = await setupEmptyRepository(t)
+    await writeFile(
+      Path.join(repository.path, '.gitattributes'),
+      '*.uasset lockable\n'
+    )
+
+    const lockable = await getLockableFiles(repository, [
+      'Assets/Character.uasset',
+      'src/main.ts',
+    ])
+
+    assert(lockable.has('Assets/Character.uasset'))
+    assert(!lockable.has('src/main.ts'))
+  })
+
+  it('returns empty set for empty file list', async t => {
+    const repository = await setupEmptyRepository(t)
+    const lockable = await getLockableFiles(repository, [])
+    assert.equal(lockable.size, 0)
   })
 })

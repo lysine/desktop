@@ -63,3 +63,55 @@ export async function listLocks(
     return []
   }
 }
+
+/**
+ * Given a list of file paths, returns the subset that are marked `lockable`
+ * in .gitattributes. Uses a single `git check-attr` invocation for efficiency.
+ */
+export async function getLockableFiles(
+  repository: Repository,
+  filePaths: ReadonlyArray<string>
+): Promise<ReadonlySet<string>> {
+  if (filePaths.length === 0) {
+    return new Set()
+  }
+
+  try {
+    const { stdout } = await git(
+      ['check-attr', 'lockable', '--', ...filePaths],
+      repository.path,
+      'getLockableFiles'
+    )
+
+    // Output format per line: "<path>: lockable: set" or "<path>: lockable: unspecified"
+    const lockable = new Set<string>()
+    for (const line of stdout.split('\n')) {
+      const match = /^(.+): lockable: set$/.exec(line.trim())
+      if (match) {
+        lockable.add(match[1])
+      }
+    }
+    return lockable
+  } catch {
+    return new Set()
+  }
+}
+
+/**
+ * Returns the local git user name for ownership comparison.
+ * Falls back to null if git config has no user.name set.
+ */
+export async function getCurrentUser(
+  repository: Repository
+): Promise<string | null> {
+  try {
+    const { stdout } = await git(
+      ['config', 'user.name'],
+      repository.path,
+      'getLfsCurrentUser'
+    )
+    return stdout.trim() || null
+  } catch {
+    return null
+  }
+}
