@@ -1,3 +1,5 @@
+import { chmod, stat } from 'fs/promises'
+import * as Path from 'path'
 import { git } from './core'
 import { Repository } from '../../models/repository'
 import { ILfsLockInfo } from '../../models/lfs-lock'
@@ -172,9 +174,32 @@ export async function unlockLfsFiles(
     })
   )
 
+  const succeeded = results.filter(r => r.ok).map(r => r.path)
+  await Promise.all(succeeded.map(p => clearReadOnly(repository, p)))
+
   return {
-    succeeded: results.filter(r => r.ok).map(r => r.path),
+    succeeded,
     failed: results.filter(r => !r.ok).map(r => r.path),
+  }
+}
+
+// `git lfs unlock` doesn't always flip the read-only bit on the working-tree
+// file. Unreal's Source Control plugin (and other Perforce-style tools) keys
+// off that bit to know whether a file is checked out, so leaving it set means
+// the editor still sees the file as locked until the user manually refreshes.
+async function clearReadOnly(
+  repository: Repository,
+  relativePath: string
+): Promise<void> {
+  const fullPath = Path.join(repository.path, relativePath)
+  try {
+    const s = await stat(fullPath)
+    await chmod(fullPath, s.mode | 0o200)
+  } catch (e) {
+    log.warn(
+      `clearReadOnly: failed for ${relativePath}`,
+      e instanceof Error ? e : new Error(String(e))
+    )
   }
 }
 
